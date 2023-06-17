@@ -1,0 +1,143 @@
+import telebot
+
+from telebot import types
+
+TOKEN = 'YOUR_BOT_TOKEN'
+
+bot = telebot.TeleBot(TOKEN)
+
+@bot.message_handler(commands=['start'])
+
+def handle_start(message):
+
+    bot.reply_to(message, "Бот не может увидеть юзернейм, телефон, имя или другие данные акаунта, с которого вы пишете. Мы гарантируем конфиденциальность и сохранность всех предоставленных вами данных.")
+
+    bot.send_message(message.chat.id, "Укажите следующую информацию о себе:", parse_mode="HTML")
+
+    bot.send_message(message.chat.id, "<b>Ваш возраст</b>", reply_markup=get_age_keyboard(), parse_mode="HTML")
+
+def get_age_keyboard():
+
+    keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+
+    buttons = [types.KeyboardButton(text="Младше 18"), types.KeyboardButton(text="18-25"), types.KeyboardButton(text="25-45"), types.KeyboardButton(text="Старше 45")]
+
+    keyboard.add(*buttons)
+
+    return keyboard
+
+@bot.message_handler(func=lambda message: message.text in ["Младше 18", "18-25", "25-45", "Старше 45"])
+
+def handle_age(message):
+
+    bot.send_message(message.chat.id, "Поддерживаете ли вы СВО?", reply_markup=get_support_keyboard())
+
+def get_support_keyboard():
+
+    keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+
+    buttons = [types.KeyboardButton(text="Назад"), types.KeyboardButton(text="Да"), types.KeyboardButton(text="Нет")]
+
+    keyboard.add(*buttons)
+
+    return keyboard
+
+@bot.message_handler(func=lambda message: message.text in ["Назад", "Да", "Нет"])
+
+def handle_support(message):
+
+    if message.text == "Назад":
+
+        bot.send_message(message.chat.id, "Укажите следующую информацию о себе:", parse_mode="HTML")
+
+        bot.send_message(message.chat.id, "<b>Ваш возраст</b>", reply_markup=get_age_keyboard(), parse_mode="HTML")
+
+    else:
+
+        bot.send_message(message.chat.id, "Оставьте ник (username) акаунта в телеграм или Ваш номер телефона, чтобы мы могли с Вами связаться.", reply_markup=get_contact_keyboard())
+
+def get_contact_keyboard():
+
+    keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+
+    buttons = [types.KeyboardButton(text="Назад"), types.KeyboardButton(text="Начать сначала")]
+
+    keyboard.add(*buttons)
+
+    return keyboard
+
+@bot.message_handler(func=lambda message: message.text not in ["Назад", "Начать сначала"])
+
+def handle_contact(message):
+
+    bot.send_message(message.chat.id, "Укажите секретное слово или фразу, которую мы используем для связи с вами.", reply_markup=get_secret_word_keyboard())
+
+def get_secret_word_keyboard():
+
+    keyboard = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+
+    buttons = [types.KeyboardButton(text="Назад"), types.KeyboardButton(text="Начать сначала")]
+
+    keyboard.add(*buttons)
+
+    return keyboard
+
+@bot.message_handler(func=lambda message: message.text not in ["Назад", "Начать сначала"])
+
+def handle_secret_word(message):
+
+    secret_word = message.text
+
+    response = "Информация:\n"
+
+    response += f"• Ваш возраст => {get_user_answer(message.chat.id, 'Ваш возраст')}\n"
+
+    response += f"• Поддерживаете ли вы СВО? => {get_user_answer(message.chat.id, 'Поддерживаете ли вы СВО?')}\n"
+
+    response += f"• Оставьте ник (username) акаунта в телеграм или Ваш номер телефона, чтобы мы могли с Вами связаться. => {get_user_answer(message.chat.id, 'Оставьте ник (username) акаунта в телеграм или Ваш номер телефона, чтобы мы могли с Вами связаться.')}\n"
+
+    response += f"• Укажите секретное слово или фразу, которую мы используем для связи с вами. => {secret_word}"
+
+    bot.send_message(message.chat.id, response, parse_mode="HTML")
+
+    bot.send_message(message.chat.id, "Благодарю за то, что воспользовался ботом. Мы выйдем на связь после обработки Вашей заявки. За нашу и вашу свободу!", parse_mode="HTML")
+
+def get_user_answer(chat_id, question):
+
+    for user in users:
+
+        if user["chat_id"] == chat_id:
+
+            return user["answers"].get(question, "-")
+
+    return "-"
+
+users = []
+
+@bot.message_handler(func=lambda message: True)
+
+def handle_all_messages(message):
+
+    chat_id = message.chat.id
+
+    user = find_user(chat_id)
+
+    if user is None:
+
+        user = {"chat_id": chat_id, "answers": {}}
+
+        users.append(user)
+
+    user["answers"][message.text] = message.text
+
+def find_user(chat_id):
+
+    for user in users:
+
+        if user["chat_id"] == chat_id:
+
+            return user
+
+    return None
+
+bot.polling()
